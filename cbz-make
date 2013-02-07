@@ -1,0 +1,139 @@
+#!/bin/sh
+
+SIZE=758x1024
+
+# 順番大事 - jarp,
+# http://jarp.does.notwork.org/diary/201112b.html#201112151
+# 150 dpiでスキャンするより300 dpiでスキャンして16階調にしたほうがサイズが小さい - jarp,
+# http://jarp.does.notwork.org/diary/201112b.html#201112171
+
+OPTIONS="\
+  -fuzz 50% -trim \
+  -gravity center \
+  -resize $SIZE -page $SIZE -extent $SIZE \
+  -gravity northwest -splice 10x10 \
+  -gravity southeast -splice 10x10 \
+  -depth 4 \
+  -type grayscale \
+  -sharpen 5 \
+  -deskew 40% \
+  "
+
+#  -level 30%,100% \
+
+# -fuzz 50% -trim
+#   余白を削除
+# -gravity center
+# -resize $SIZE -page $SIZE -extent $SIZE
+#   $SIZE にリサイズする。余白は埋められる。
+# -gravity northwest -splice 10x10
+# -gravity southeast -splice 10x10
+#   上下左右に、10px の余白をつける。
+# -depth 4
+#   4bits カラー
+# -type grayscale
+#   グレースケール
+# -level 30%,100%
+#   コントラスト調整
+# -sharpen 5
+#   シャープ化
+# -deskew 40%
+#   傾き補正
+
+trap clean EXIT
+
+function clean () {
+  title clean
+  [ -d "$current_tmpdir" ] && /bin/rm -rf "$current_tmpdir"
+}
+
+function die () {
+  echo "$1"
+  exit 1
+}
+
+function title () {
+  echo -e "\033[40m\033[1;34m$1\033[0;39m"
+}
+
+function main () {
+
+  local curdir=`pwd`
+  local src="$1"
+  [ -z "$src" ] && die "Usage: $0 <PDF_FILEPATH>"
+
+  local ext=`echo ${src##*.} | tr A-Z a-z`
+  local filename=`basename "${src%.*}"`
+  local fullpath=`echo $(cd $(dirname "$src") && pwd)/$(basename "$src")`
+
+  title "     start     "
+  echo "$filename"
+  echo "$fullpath"
+
+  if expr "$fullpath" : ".*\(light\)" > /dev/null
+  then
+    local sub="sd"
+  else
+    local sub="main"
+  fi
+
+  # dst=`dirname "$src"`/"${filename}.cbz"
+  local dst=/media/data/share/maruo/kobo/"$sub"/"${filename}.cbz"
+
+  title "mktemp"
+  local tmpdir=`mktemp -d` || die "Could not make temp dir"
+  current_tmpdir="$tmpdir"
+
+  title "mkdirs"
+  mkdir "$tmpdir/original" || die "Could not make directory: original"
+  mkdir "$tmpdir/resized" || die "Could not make directory: resized"
+
+  case "$ext" in
+    pdf)
+      title "pdfimages"
+      pdfimages "$src" "$tmpdir/original/pdf"
+      ;;
+    zip)
+      title "unpack"
+      aunpack -q -X "$tmpdir/original/" "$src"
+      ;;
+  esac
+
+  title "resize"
+  cd "$tmpdir/original"
+  for it in `find -name "*.*"`
+  do
+    if [ -f "$it" ]
+    then
+      local itdir=../resized/`dirname "$it"`
+      [ -d "$itdir" ] || mkdir -p "$itdir"
+      local png="${it%.*}.png"
+      convert $OPTIONS "$it" "../resized/$png"
+    fi
+  done
+
+  title "apack"
+  cd "$tmpdir/resized"
+  apack -q -F zip "$dst" "$tmpdir/original/"
+
+
+  title "clean"
+  /bin/rm -rf "$tmpdir"
+
+  title "finish"
+  echo "Generated in: $dst"
+
+  cd "$curdir"
+
+  # REF
+  # mieki256's diary - ImageMagickとシャープ化
+  # http://blawat2015.no-ip.com/~mieki256/diary/2004112610.html
+  #
+  # ImageMagick: Command-line Tools: Convert
+  # http://www.imagemagick.org/script/convert.php
+}
+
+for filepath in "$@"
+do
+  main "$filepath"
+done
