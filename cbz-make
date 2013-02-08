@@ -167,7 +167,7 @@ function main () {
 
   title "apack"
   cd "$tmpdir/resized"
-  /bin/rm "$dst"
+  [ -f "$dst" ] && /bin/rm "$dst"
   apack -q -F zip "$dst" .
 
 
