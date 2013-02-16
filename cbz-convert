@@ -1,0 +1,66 @@
+#!/bin/sh
+
+WIDTH=758
+HEIGHT=1024
+FUZZ='50%'
+# 順番大事 - jarp,
+# http://jarp.does.notwork.org/diary/201112b.html#201112151
+# 150 dpiでスキャンするより300 dpiでスキャンして16階調にしたほうがサイズが小さい - jarp,
+# http://jarp.does.notwork.org/diary/201112b.html#201112171
+
+# 余白分減らす
+IWIDTH=$(( $WIDTH - 20 ))
+IHEIGHT=$(( $HEIGHT - 20 ))
+SIZE="${IWIDTH}x${IHEIGHT}"
+
+OPTIONS=`echo "\
+  -fuzz $FUZZ -trim \
+  -deskew 40% \
+  -sharpen 5 \
+  -gravity center \
+  -resize $SIZE -page $SIZE -extent $SIZE \
+  -gravity northwest -splice 10x10 \
+  -gravity southeast -splice 10x10 \
+  -depth 4 \
+  -type grayscale \
+  " | sed 's/\n/ /g'`
+
+OPTIONS_2=`echo "\
+  -deskew 40% \
+  -sharpen 5 \
+  -gravity center \
+  -resize $SIZE -page $SIZE -extent $SIZE \
+  -gravity northwest -splice 10x10 \
+  -gravity southeast -splice 10x10 \
+  -depth 4 \
+  -type grayscale \
+  " | sed 's/\n/ /g'`
+
+#  -level 30%,100% \
+
+# -fuzz 50% -trim
+#   余白を削除
+# -gravity center
+# -resize $SIZE -page $SIZE -extent $SIZE
+#   $SIZE にリサイズする。余白は埋められる。
+# -gravity northwest -splice 10x10
+# -gravity southeast -splice 10x10
+#   上下左右に、10px の余白をつける。
+# -depth 4
+#   4bits カラー
+# -type grayscale
+#   グレースケール
+# -level 30%,100%
+#   コントラスト調整
+# -sharpen 5
+#   シャープ化
+# -deskew 40%
+#   傾き補正
+
+
+src="$1"
+out="$2"
+
+convert $OPTIONS "$src" "$out" 2>&1 | grep -v '.*' && [ `ls -l "$out" | awk '{ print $5 }'` -gt 2000 ] && exit 0
+convert $OPTIONS_2 "$src" "$out"
+
