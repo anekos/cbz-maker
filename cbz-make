@@ -4,6 +4,7 @@ WIDTH=758
 HEIGHT=1024
 USE_XARGS=1
 CORES=4
+FUZZ='25%'
 TESTMODE=0
 
 # 順番大事 - jarp,
@@ -17,7 +18,18 @@ IHEIGHT=$(( $HEIGHT - 20 ))
 SIZE="${IWIDTH}x${IHEIGHT}"
 
 OPTIONS=`echo "\
-  -fuzz 50% -trim \
+  -fuzz $FUZZ -trim \
+  -deskew 40% \
+  -sharpen 5 \
+  -gravity center \
+  -resize $SIZE -page $SIZE -extent $SIZE \
+  -gravity northwest -splice 10x10 \
+  -gravity southeast -splice 10x10 \
+  -depth 4 \
+  -type grayscale \
+  " | sed 's/\n/ /g'`
+
+OPTIONS_2=`echo "\
   -deskew 40% \
   -sharpen 5 \
   -gravity center \
@@ -125,6 +137,7 @@ function main () {
   title "mkdirs"
   mkdir "$tmpdir/original" || die "Could not make directory: original"
   mkdir "$tmpdir/resized" || die "Could not make directory: resized"
+  mkdir "$tmpdir/unpack" || die "Could not make directory: unpack"
 
   case "$ext" in
     pdf)
@@ -133,7 +146,15 @@ function main () {
       ;;
     zip)
       title "unpack"
-      aunpack -q -X "$tmpdir/original/" "$src"
+      aunpack -q -X "$tmpdir/unpack/" "$src"
+      # unzip -q -j -d "$tmpdir/unpack/" "$src"
+      find "$tmpdir/unpack/" -type f | sort | nl -w4 -n rz -s : | while read it
+      do
+        num=`echo "$it" | cut -d: -f1`
+        ext=`echo "${it##*.}"`
+        path=`echo "$it" | cut -d: -f2-`
+        mv "$path" "$tmpdir/original/${num}.${ext}"
+      done
       ;;
   esac
 
@@ -148,10 +169,11 @@ function main () {
         local itdir=../resized/`dirname "$it"`
         [ -d "$itdir" ] || mkdir -p "$itdir"
         local png="${it%.*}.png"
+        local out="\"../resized/$png\""
         # /tmp/xmosh/echo-args
-        echo "convert $OPTIONS \"$it\" \"../resized/$png\""
+        echo "convert $OPTIONS \"$it\" $out 2>&1 | grep '.*' && convert $OPTIONS_2 \"$it\" $out"
       fi
-    done | parallel -P "$CORES" -e eval
+    done | parallel --eta -P "$CORES" sh -c
   else
     find -type f | filter | while read it
     do
