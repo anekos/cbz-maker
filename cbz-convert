@@ -1,5 +1,7 @@
 #!/bin/sh
 
+USE_GM=0
+
 WIDTH=758
 HEIGHT=1024
 FUZZ='50%'
@@ -13,28 +15,46 @@ IWIDTH=$(( $WIDTH - 20 ))
 IHEIGHT=$(( $HEIGHT - 20 ))
 SIZE="${IWIDTH}x${IHEIGHT}"
 
-OPTIONS=`echo "\
-  -fuzz $FUZZ -trim \
-  -deskew 40% \
-  -sharpen 5 \
-  -gravity center \
-  -resize $SIZE -page $SIZE -extent $SIZE \
-  -gravity northwest -splice 10x10 \
-  -gravity southeast -splice 10x10 \
-  -depth 4 \
-  -type grayscale \
-  " | sed 's/\n/ /g'`
+if [ "$USE_GM" = 1 ]
+then
+  OPTIONS_1=`echo "\
+    -fuzz $FUZZ -trim \
+    -sharpen 5 \
+    -gravity center \
+    -resize $SIZE -page $SIZE -extent $SIZE \
+    -depth 4 \
+    -type grayscale \
+    " | sed 's/\n/ /g'`
 
-OPTIONS_2=`echo "\
-  -deskew 40% \
-  -sharpen 5 \
-  -gravity center \
-  -resize $SIZE -page $SIZE -extent $SIZE \
-  -gravity northwest -splice 10x10 \
-  -gravity southeast -splice 10x10 \
-  -depth 4 \
-  -type grayscale \
-  " | sed 's/\n/ /g'`
+  OPTIONS_2=`echo "\
+    -sharpen 5 \
+    -gravity center \
+    -resize $SIZE -page $SIZE -extent $SIZE \
+    -depth 4 \
+    -type grayscale \
+    " | sed 's/\n/ /g'`
+else
+  OPTIONS_1=`echo "\
+    -fuzz $FUZZ -trim \
+    -deskew 40% \
+    -sharpen 5 \
+    -gravity center \
+    -resize $SIZE -page $SIZE -extent $SIZE \
+    -gravity northwest -splice 10x10 \
+    -gravity southeast -splice 10x10 \
+    -depth 4 \
+    -type grayscale \
+    " | sed 's/\n/ /g'`
+
+  OPTIONS_2=`echo "\
+    -deskew 40% \
+    -sharpen 5 \
+    -gravity center \
+    -resize $SIZE -page $SIZE -extent $SIZE \
+    -depth 4 \
+    -type grayscale \
+    " | sed 's/\n/ /g'`
+fi
 
 #  -level 30%,100% \
 
@@ -61,6 +81,12 @@ OPTIONS_2=`echo "\
 src="$1"
 out="$2"
 
-convert $OPTIONS "$src" "$out" 2>&1 | grep -v '.*' && [ `ls -l "$out" | awk '{ print $5 }'` -gt 2000 ] && exit 0
-convert $OPTIONS_2 "$src" "$out"
+if [ "$USE_GM" = 1 ]
+then
+  gm convert $OPTIONS_1 "$src" "$out" 2>&1 | grep -v '.*' && [ `ls -l "$out" | awk '{ print $5 }'` -gt 2000 ] && exit 0
+  gm convert $OPTIONS_2 "$src" "$out"
+else
+  convert $OPTIONS_1 "$src" "$out" 2>&1 | grep -v '.*' && [ `ls -l "$out" | awk '{ print $5 }'` -gt 2000 ] && exit 0
+  convert $OPTIONS_2 "$src" "$out"
+fi
 

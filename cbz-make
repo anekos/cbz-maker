@@ -63,12 +63,13 @@ function main () {
   echo "$filename"
   echo "$fullpath"
 
-  if expr "$fullpath" : ".*\(light\)" > /dev/null
-  then
-    local sub="sd"
-  else
-    local sub="main"
-  fi
+  # if expr "$fullpath" : ".*\(light\)" > /dev/null
+  # then
+  #   local sub="sd"
+  # else
+  #   local sub="main"
+  # fi
+  local sub="sd"
 
   # dst=`dirname "$src"`/"${filename}.cbz"
   local dst=/media/data/share/maruo/kobo/"$sub"/"${filename}.cbz"
@@ -87,7 +88,7 @@ function main () {
       title "pdfimages"
       pdfimages "$src" "$tmpdir/original/pdf"
       ;;
-    zip)
+    zip|rar)
       title "unpack"
       aunpack -q -X "$tmpdir/unpack/" "$src"
       # unzip -q -j -d "$tmpdir/unpack/" "$src"
@@ -134,7 +135,7 @@ function main () {
   title "apack"
   cd "$tmpdir/resized"
   [ -f "$dst" ] && /bin/rm "$dst"
-  apack -q -F zip "$dst" .
+  apack -q -F zip "$dst" $(ls *.* | sort -n)
 
 
   title "clean"
