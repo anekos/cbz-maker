@@ -3,7 +3,7 @@
 USE_GM=0
 
 WIDTH=758
-HEIGHT=1024
+HEIGHT=1014 # kobo glo = 1024, kobo aura = 1014 謎の 10px 減少…
 FUZZ='50%'
 # 順番大事 - jarp,
 # http://jarp.does.notwork.org/diary/201112b.html#201112151

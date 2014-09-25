@@ -72,7 +72,7 @@ function main () {
   local sub="sd"
 
   # dst=`dirname "$src"`/"${filename}.cbz"
-  local dst=/media/data/share/maruo/kobo/"$sub"/"${filename}.cbz"
+  local dst=/media/data/device/kobo-aura/"$sub"/"${filename}.cbz"
 
   title "mktemp"
   local tmpdir=`mktemp -d` || die "Could not make temp dir"
