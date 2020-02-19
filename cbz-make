@@ -1,6 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
-USE_XARGS=1
+set -x
+set -euC
+
+
+
 CORES=4
 TESTMODE=0
 
@@ -29,7 +33,8 @@ function filter () {
 }
 
 function title () {
-  echo -e "\033[40m\033[1;34m$1\033[0;39m"
+  # shellcheck disable=1117
+  echo -e "\e[40m\e[1;34m$1\e[0;39m"
 }
 
 
@@ -50,38 +55,32 @@ function lock () {
 }
 
 function main () {
-
-  local curdir=`pwd`
+  local curdir="$PWD"
   local src="$1"
+
   [ -z "$src" ] && die "Usage: $0 <PDF_FILEPATH>"
 
-  local ext=`echo ${src##*.} | tr A-Z a-z`
-  local filename=`basename "${src%.*}"`
-  local fullpath=`echo $(cd $(dirname "$src") && pwd)/$(basename "$src")`
+  local ext filename tmpdir
+
+  ext="$(echo "${src##*.}" | tr '[:upper:]' '[:lower:]')"
+  filename="$(basename "${src%.*}")"
 
   title "     start     "
   echo "$filename"
-  echo "$fullpath"
 
-  # if expr "$fullpath" : ".*\(light\)" > /dev/null
-  # then
-  #   local sub="sd"
-  # else
-  #   local sub="main"
-  # fi
   local sub="sd"
 
   # dst=`dirname "$src"`/"${filename}.cbz"
-  local dst=/media/data/device/kobo-aura/"$sub"/"${filename}.cbz"
+  local dst=/mnt/syno/data/device/kobo-aura/"$sub/${filename}.cbz"
 
   title "mktemp"
-  local tmpdir=`mktemp -d` || die "Could not make temp dir"
+  tmpdir="$(mktemp -d)"
   current_tmpdir="$tmpdir"
 
   title "mkdirs"
-  mkdir "$tmpdir/original" || die "Could not make directory: original"
-  mkdir "$tmpdir/resized" || die "Could not make directory: resized"
-  mkdir "$tmpdir/unpack" || die "Could not make directory: unpack"
+  mkdir "$tmpdir/original"
+  mkdir "$tmpdir/resized"
+  mkdir "$tmpdir/unpack"
 
   case "$ext" in
     pdf)
@@ -92,11 +91,11 @@ function main () {
       title "unpack"
       aunpack -q -X "$tmpdir/unpack/" "$src"
       # unzip -q -j -d "$tmpdir/unpack/" "$src"
-      find "$tmpdir/unpack/" -type f | sort | nl -w4 -n rz -s : | while read it
+      find "$tmpdir/unpack/" -type f | sort | nl -w4 -n rz -s : | while read -r it
       do
-        num=`echo "$it" | cut -d: -f1`
-        ext=`echo "${it##*.}"`
-        path=`echo "$it" | cut -d: -f2-`
+        num="$(echo "$it" | cut -d: -f1)"
+        ext="${it##*.}"
+        path="$(echo "$it" | cut -d: -f2-)"
         mv "$path" "$tmpdir/original/${num}.${ext}"
       done
       ;;
@@ -104,38 +103,28 @@ function main () {
 
   title "resize"
   cd "$tmpdir/original"
-  if [ "$USE_XARGS" = 1 ]
-  then
-    find -type f | filter | while read it
-    do
-      if [ -f "$it" ]
-      then
-        local itdir=../resized/`dirname "$it"`
-        [ -d "$itdir" ] || mkdir -p "$itdir"
-        local png="${it%.*}.png"
-        local out="\"../resized/$png\""
-        # /tmp/xmosh/echo-args
-        # 小さすぎる出力は失敗の可能性が高い。 -gt 2000
-        echo "cbz-convert \"$it\" $out"
-      fi
-    done | parallel --eta -P "$CORES" sh -c
-  else
-    find -type f | filter | while read it
-    do
-      if [ -f "$it" ]
-      then
-        local itdir=../resized/`dirname "$it"`
-        [ -d "$itdir" ] || mkdir -p "$itdir"
-        local png="${it%.*}.png"
-        convert $OPTIONS "$it" "../resized/$png"
-      fi
-    done
-  fi
+  find . -type f | filter | while read -r it
+  do
+    if [ -f "$it" ]
+    then
+      local itdir
+      itdir=../resized/"$(dirname "$it")"
+      [ -d "$itdir" ] || mkdir -p "$itdir"
+      local png="${it%.*}.png"
+      local out="\"../resized/$png\""
+      # 小さすぎる出力は失敗の可能性が高い。 -gt 2000
+      printf 'cbz-convert %q %s' "$it" "$out"
+      echo ''
+    fi
+  done | parallel --eta -P "$CORES" sh -c
 
   title "apack"
   cd "$tmpdir/resized"
   [ -f "$dst" ] && /bin/rm "$dst"
-  apack -q -F zip "$dst" $(ls *.* | sort -n)
+  # local content_files
+  # mapfile content_files <(echo ./*.* | sort -n)
+  # echo apack -F zip "$dst" "${content_files[@]}"
+  apack -F zip "$dst" ./*.*
 
 
   title "clean"

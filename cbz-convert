@@ -1,6 +1,6 @@
 #!/bin/sh
 
-USE_GM=0
+USE_GM=1
 
 WIDTH=758
 HEIGHT=1014 # kobo glo = 1024, kobo aura = 1014 謎の 10px 減少…
@@ -11,9 +11,7 @@ FUZZ='50%'
 # http://jarp.does.notwork.org/diary/201112b.html#201112171
 
 # 余白分減らす
-IWIDTH=$(( $WIDTH - 20 ))
-IHEIGHT=$(( $HEIGHT - 20 ))
-SIZE="${IWIDTH}x${IHEIGHT}"
+SIZE="${WIDTH}x${HEIGHT}"
 
 if [ "$USE_GM" = 1 ]
 then
