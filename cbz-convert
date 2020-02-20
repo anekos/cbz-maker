@@ -1,90 +1,29 @@
 #!/bin/sh
 
-USE_GM=1
-
-WIDTH=758
-HEIGHT=1014 # kobo glo = 1024, kobo aura = 1014 謎の 10px 減少…
-FUZZ='50%'
-# 順番大事 - jarp,
-# http://jarp.does.notwork.org/diary/201112b.html#201112151
-# 150 dpiでスキャンするより300 dpiでスキャンして16階調にしたほうがサイズが小さい - jarp,
-# http://jarp.does.notwork.org/diary/201112b.html#201112171
-
-# 余白分減らす
-SIZE="${WIDTH}x${HEIGHT}"
-
-if [ "$USE_GM" = 1 ]
-then
-  OPTIONS_1=`echo "\
-    -fuzz $FUZZ -trim \
-    -sharpen 5 \
-    -gravity center \
-    -resize $SIZE -page $SIZE -extent $SIZE \
-    -depth 4 \
-    -type grayscale \
-    " | sed 's/\n/ /g'`
-
-  OPTIONS_2=`echo "\
-    -sharpen 5 \
-    -gravity center \
-    -resize $SIZE -page $SIZE -extent $SIZE \
-    -depth 4 \
-    -type grayscale \
-    " | sed 's/\n/ /g'`
-else
-  OPTIONS_1=`echo "\
-    -fuzz $FUZZ -trim \
-    -deskew 40% \
-    -sharpen 5 \
-    -gravity center \
-    -resize $SIZE -page $SIZE -extent $SIZE \
-    -gravity northwest -splice 10x10 \
-    -gravity southeast -splice 10x10 \
-    -depth 4 \
-    -type grayscale \
-    " | sed 's/\n/ /g'`
-
-  OPTIONS_2=`echo "\
-    -deskew 40% \
-    -sharpen 5 \
-    -gravity center \
-    -resize $SIZE -page $SIZE -extent $SIZE \
-    -depth 4 \
-    -type grayscale \
-    " | sed 's/\n/ /g'`
-fi
-
-#  -level 30%,100% \
-
-# -fuzz 50% -trim
-#   余白を削除
-# -gravity center
-# -resize $SIZE -page $SIZE -extent $SIZE
-#   $SIZE にリサイズする。余白は埋められる。
-# -gravity northwest -splice 10x10
-# -gravity southeast -splice 10x10
-#   上下左右に、10px の余白をつける。
-# -depth 4
-#   4bits カラー
-# -type grayscale
-#   グレースケール
-# -level 30%,100%
-#   コントラスト調整
-# -sharpen 5
-#   シャープ化
-# -deskew 40%
-#   傾き補正
-
-
 src="$1"
 out="$2"
 
-if [ "$USE_GM" = 1 ]
-then
-  gm convert $OPTIONS_1 "$src" "$out" 2>&1 | grep -v '.*' && [ `ls -l "$out" | awk '{ print $5 }'` -gt 2000 ] && exit 0
-  gm convert $OPTIONS_2 "$src" "$out"
-else
-  convert $OPTIONS_1 "$src" "$out" 2>&1 | grep -v '.*' && [ `ls -l "$out" | awk '{ print $5 }'` -gt 2000 ] && exit 0
-  convert $OPTIONS_2 "$src" "$out"
-fi
+# 本当に効果あるのか?
+# OpenMP版ImageMagickの高負荷問題の最も簡単な対処法:ImageMagick:Technical tips:Media hub - http://tech.clickyourstyle.com/articles/194
+export OMP_NUM_THREADS=1
 
+
+WIDTH=758
+HEIGHT=1014 # kobo glo = 1024, kobo aura = 1014 謎の 10px 減少…
+
+SIZE="${WIDTH}x${HEIGHT}"
+
+# ノイズに対する感度
+FUZZ='50%'
+
+convert \
+  -fuzz "$FUZZ" -trim \
+  -bordercolor white \
+  -border 40x40 \
+  -gravity center \
+  -resize "$SIZE" -page "$SIZE" -extent "$SIZE" \
+  -threshold 50000 \
+  "$src" "$out"
+
+
+# スキャナで自炊した画像をキンドル向けにImageMagickで最適化してみる - http://netbuffalo.doorblog.jp/archives/4033031.html
