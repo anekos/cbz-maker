@@ -7,6 +7,7 @@ set -euC
 
 CORES=4
 TESTMODE=0
+current_tmpdir=
 
 trap clean EXIT
 trap exit INT
@@ -64,6 +65,10 @@ function main () {
 
   ext="$(echo "${src##*.}" | tr '[:upper:]' '[:lower:]')"
   filename="$(basename "${src%.*}")"
+  if [[ "$filename" =~ ^[0-9]+ ]]
+  then
+    filename="$(basename "$(dirname "$src")") ${filename}"
+  fi
 
   title "     start     "
   echo "$filename"
@@ -71,7 +76,7 @@ function main () {
   local sub="sd"
 
   # dst=`dirname "$src"`/"${filename}.cbz"
-  local dst=/mnt/syno/data/device/kobo-aura/"$sub/${filename}.cbz"
+  local dst=/mnt/syno/data/device/kobo-aura-one/"$sub/${filename}.cbz"
 
   title "mktemp"
   tmpdir="$(mktemp -d)"
